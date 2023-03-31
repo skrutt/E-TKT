@@ -38,7 +38,6 @@
 #include <ESPAsyncWebServer.h>
 #include <ESPAsyncWiFiManager.h>
 #include "SPIFFS.h"
-#include <qrcode.h>
 #include <U8g2lib.h>
 #include <ESP32Tone.h>
 #include <Preferences.h>
@@ -48,12 +47,15 @@
 #include "AsyncJson.h"
 
 // extension files
-#include "etktLogo.cpp" // etkt logo in binary format
-#include "pitches.cpp"	// list of notes and their frequencies
+#include "etktLogo.h" // etkt logo in binary format
+#include "pitches.h"	// list of notes and their frequencies
+
+// oled display
+#include "display.h"
 
 // BASIC CONFIGURATION ------------------------------------------------------------
 
-#include "optConfig.cpp" // opt-in external file for configuring motor direction and hall sensor logic
+#include "optConfig.h" // opt-in external file for configuring motor direction and hall sensor logic
 
 // Speed and acceleration of the stepper motor that rotates the character carousel, measured in steps/s and steps/s^2.
 // Use lower values if you find that the printer sometimes prints the wrong letter.  Any value above zero is ok but
@@ -100,8 +102,6 @@ Servo myServo;
 #define targetAngle 22
 int peakAngle;
 
-// oled display
-#include "display128_32.cpp"
 
 // leds
 #define ledFinish 5
@@ -203,60 +203,6 @@ QRCode qrcode;				  //  create the QR code
 String displaySSID = "";
 String displayIP = "";
 
-// --------------------------------------------------------------------------------
-// UTF-8 String handling
-
-// Returns the number of bytes making up the UTF-8 character starting at char index
-// "position" of str.  For an explanation of the magic constants, please see:
-// https://en.wikipedia.org/wiki/UTF-8#Encoding
-int utf8CharLength(String str, int position)
-{
-	int start = str[position];
-	if (start >> 3 == 30)
-	{
-		return 4;
-	}
-	else if (start >> 4 == 14)
-	{
-		return 3;
-	}
-	else if (start >> 5 == 6)
-	{
-		return 2;
-	}
-	else
-	{
-		return 1;
-	}
-}
-
-// Returns the length of a UTF-8 encoded string, treating each UTF-8 code-point
-// as a single character.
-int utf8Length(String str)
-{
-	int position = 0;
-	int length = 0;
-	while (position < str.length())
-	{
-		position += utf8CharLength(str, position);
-		length++;
-	}
-	return length;
-}
-
-// Returns the UTF-8 characters at the given position of the given string,
-// treating multi-character code points as inidividual characters.
-String utf8CharAt(String str, int position)
-{
-	int current = 0;
-	while (current < str.length() && position > 0)
-	{
-		current += utf8CharLength(str, current);
-		position--;
-	}
-	int charLength = utf8CharLength(str, current);
-	return str.substring(current, current + charLength);
-}
 
 // --------------------------------------------------------------------------------
 // LEDS ---------------------------------------------------------------------------
