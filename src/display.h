@@ -5,6 +5,31 @@
 #include <Arduino.h>
 #include <qrcode.h>
 #include <U8g2lib.h>
+#include "etktLogo.h" // etkt logo in binary format
+#include "pitches.h"
+#include "Labelmaker.h"
+
+#include <tuple>
+#include <map>
+
+//Choose display 
+#define DISPLAY32
+//#define DISPLAY64
+
+// qr code for accessing the webapp
+const int QRcode_Version = 3; //  set the version (range 1->40)
+const int QRcode_ECC = 2;	  //  set the Error Correction level (range 0-3) or symbolic (ECC_LOW, ECC_MEDIUM, ECC_QUARTILE and ECC_HIGH)
+
+
+// For each non-ascii "glyph" character, maps it to a tuple of (font, symbol code,
+// width, x offset, y offset).  These values are used to align the redered glyph
+// with the rest of the label text which is from a font with different spacing.
+const std::map<String, std::tuple<const uint8_t *, int, int, int, int>> glyphs = {
+	{"♡", std::make_tuple(u8g2_font_6x12_t_symbols, 0x2664, 5, -1, -1)},
+	{"☆", std::make_tuple(u8g2_font_6x12_t_symbols, 0x2605, 5, -1, -1)},
+	{"♪", std::make_tuple(u8g2_font_siji_t_6x10, 0xE271, 5, -3, 0)},
+	{"€", std::make_tuple(u8g2_font_6x12_t_symbols, 0x20AC, 6, -1, -1)}};
+
 
 
 void displayClear(int color = 0);

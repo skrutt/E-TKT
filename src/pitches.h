@@ -1,3 +1,7 @@
+#ifndef PITCHES_H
+
+#define PITCHES_H
+
 /*************************************************
 
  * Public Constants
@@ -123,3 +127,6 @@
 #define CS8 4435    
 #define D8  4699    //          S
 #define DS8 4978    
+
+
+#endif

@@ -2,16 +2,19 @@
 
 #include "display.h"
 
+#ifdef DISPLAY64
+
 // oled display
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 #define Lcd_X 128
 #define Lcd_Y 64
 
+QRCode qrcode;				  //  create the QR code
 
 // --------------------------------------------------------------------------------
 // DISPLAY ------------------------------------------------------------------------
 
-void displayClear(int color = 0)
+void displayClear(int color)
 {
 	// paints all pixels according to the desired target color
 
@@ -350,7 +353,7 @@ void displayFinished()
 	displayClear(1);
 	u8g2.setDrawColor(0);
 	u8g2.setFont(u8g2_font_nine_by_five_nbp_t_all);
-	webProgress = 100;
+
 	u8g2.drawStr(42, 37, "FINISHED!");
 
 	u8g2.setFont(u8g2_font_open_iconic_all_1x_t);
@@ -501,3 +504,5 @@ void debugDisplay()
 	// displayReboot();
 	// delay(2000);
 }
+
+#endif  //DISPLAY64

@@ -1,21 +1,26 @@
 
 #include "display.h"
 
+#ifdef DISPLAY32
+
 // oled display
 U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
-#define Lcd_X 128
-#define Lcd_Y 32
+#define LCD_X 128
+#define LCD_Y 32
+#define MIDDLE_ROW 20
+
+QRCode qrcode;				  //  create the QR code
 
 // --------------------------------------------------------------------------------
 // DISPLAY ------------------------------------------------------------------------
 
-void displayClear(int color = 0)
+void displayClear(int color)
 {
 	// paints all pixels according to the desired target color
 
-	for (uint8_t y = 0; y < Lcd_Y; y++)
+	for (uint8_t y = 0; y < LCD_Y; y++)
 	{
-		for (uint8_t x = 0; x < 128; x++)
+		for (uint8_t x = 0; x < LCD_X; x++)
 		{
 			u8g2.setDrawColor(color);
 			u8g2.drawPixel(x, y);
@@ -47,7 +52,7 @@ void displaySplash()
 	// invert colors
 	displayClear(1);
 
-	u8g2.setFont(u8g2_font_nine_by_five_nbp_t_all);
+	u8g2.setFont(u8g2_font_squeezed_r7_tr);
 	u8g2.setDrawColor(0);
 	u8g2.drawStr(40, 53, "andrei.cc");
 	u8g2.sendBuffer();
@@ -57,27 +62,27 @@ void displaySplash()
 	int n = 1;
 
 	// animated splash
-	for (int i = 128; i > 7; i = i - 18)
+	for (int i = LCD_X; i > 7; i = i - 18)
 	{
 		for (int j = 0; j < 18; j += 9)
 		{
-			u8g2.drawXBM(i - j - 11, 8, 128, 32, etktLogo);
+			u8g2.drawXBM(i - j - 11, 0, LCD_X, LCD_Y, etktLogo);
 			u8g2.sendBuffer();
 		}
-		if (charNoteSet[etktNotes[n]] != 44)
-		{
-#ifdef do_sound
-			sound(charNoteSet[etktNotes[n]], 200);
-#else
-			delay(200);
-#endif
-		}
+// 		if (charNoteSet[etktNotes[n]] != 44)
+// 		{
+// #ifdef do_sound
+// 			sound(charNoteSet[etktNotes[n]], 200);
+// #else
+// 			delay(200);
+// #endif
+// 		}
 		n++;
 	}
 
 	// draw a box with subtractive color
 	u8g2.setDrawColor(2);
-	u8g2.drawBox(0, 0, 128, Lcd_Y);
+	u8g2.drawBox(0, 0, LCD_X, LCD_Y);
 	u8g2.sendBuffer();
 
 #ifdef do_sound
@@ -93,13 +98,13 @@ void displayConfig()
 
 	displayClear();
 
-	u8g2.setFont(u8g2_font_nine_by_five_nbp_t_all);
+	u8g2.setFont(u8g2_font_squeezed_r7_tr);
 	u8g2.drawStr(15, 10, "WI-FI SETUP");
-	u8g2.drawStr(3, 20, "Please, connect to");
-	u8g2.drawStr(3, 30, "the \"E-TKT\" network...");
+	u8g2.drawStr(3, MIDDLE_ROW, "Please, connect to");
+	u8g2.drawStr(3, 31, "the \"E-TKT\" network...");
 
 	u8g2.setFont(u8g2_font_open_iconic_all_1x_t);
-	u8g2.drawGlyph(3, 12, 0x011a);
+	u8g2.drawGlyph(3, 10, 0x011a);
 
 	u8g2.sendBuffer();
 }
@@ -110,10 +115,10 @@ void displayReset()
 
 	displayClear();
 
-	u8g2.setFont(u8g2_font_nine_by_five_nbp_t_all);
+	u8g2.setFont(u8g2_font_squeezed_r7_tr);
 	u8g2.drawStr(15, 10, "WI-FI RESET");
-	u8g2.drawStr(3, 20, "Connection cleared!");
-	u8g2.drawStr(3, 30, "Release the button.");
+	u8g2.drawStr(3, MIDDLE_ROW, "Connection cleared!");
+	u8g2.drawStr(3, 31, "Release the button.");
 
 	u8g2.setFont(u8g2_font_open_iconic_all_1x_t);
 	u8g2.drawGlyph(3, 10, 0x00cd);
@@ -121,28 +126,29 @@ void displayReset()
 	u8g2.sendBuffer();
 }
 
+// main screen with qr code, network and attributed ip
 void displayQRCode()
 {
-	// main screen with qr code, network and attributed ip
 
 	displayClear();
-	u8g2.setFont(u8g2_font_nine_by_five_nbp_t_all);
+	u8g2.setFont(u8g2_font_squeezed_r7_tr);
 
 	uint8_t qrcodeData[qrcode_getBufferSize(QRcode_Version)];
 
-	if (displayIP != "")
+	if (getIP() != "")
 	{
-		u8g2.setDrawColor(1);
-
-		u8g2.drawStr(14, 15, "E-TKT");
 		u8g2.setDrawColor(2);
-		u8g2.drawFrame(3, 3, 50, 15);
-		u8g2.setDrawColor(1);
+		u8g2.drawFrame(0, 0, 50, 12);
 
-		u8g2.drawStr(14, 31, "ready");
+		u8g2.setDrawColor(1);
+		u8g2.drawStr((50 / 2 - 8), 10, "E-TKT");   //offset half text length from center of the frame
+
+		u8g2.setDrawColor(1);
+		u8g2.drawStr(11, MIDDLE_ROW, "ready");
 
 		String resizeSSID;
-		if (displaySSID.length() > 8)
+        String displaySSID = getSSID();
+		if (displaySSID.length() > 11)
 		{
 			resizeSSID = displaySSID.substring(0, 7) + "...";
 		}
@@ -150,15 +156,18 @@ void displayQRCode()
 		{
 			resizeSSID = displaySSID;
 		}
-		const char *d = resizeSSID.c_str();
-		u8g2.drawStr(14, 46, d);
+		const char *SSID_c_str = resizeSSID.c_str();
+		u8g2.drawStr(11, 31, SSID_c_str);
 
-		const char *b = displayIP.c_str();
-		u8g2.drawStr(3, 61, b);
+        String displayIP = getIP();
+		const char *IPc_str = displayIP.c_str();
+		u8g2.drawStr(LCD_X / 2 - displayIP.length() * 3 / 2, 31, IPc_str);
 
 		u8g2.setFont(u8g2_font_open_iconic_all_1x_t);
-		u8g2.drawGlyph(3, 46, 0x00f8);
-		u8g2.drawGlyph(3, 31, 0x0073);
+		u8g2.drawGlyph(0, 22, 0x0073);  //checkmark
+		u8g2.drawGlyph(0, 31, 0x00f8);  //Wifi symbol
+
+        //QR code
 
 		String ipFull = "http://" + displayIP;
 		const char *c = ipFull.c_str();
@@ -175,7 +184,7 @@ void displayQRCode()
 		// }
 
 		// setup the top right corner of the QRcode
-		uint8_t x0 = 128 - Lcd_Y + 3;
+		uint8_t x0 = LCD_X - LCD_Y + 3;
 		uint8_t y0 = 0;
 
 		// display QRcode
@@ -214,10 +223,10 @@ void displayProgress(float progress, String label)
 
 	// Show "⚙️ PRINTING" header.
 	u8g2.setDrawColor(1);
-	u8g2.setFont(u8g2_font_nine_by_five_nbp_t_all);
-	u8g2.drawStr(15, 12, "PRINTING");
+	u8g2.setFont(u8g2_font_squeezed_r7_tr);
+	u8g2.drawStr(15, 10, "PRINTING");
 	u8g2.setFont(u8g2_font_open_iconic_all_1x_t);
-	u8g2.drawGlyph(3, 12, 0x0081);
+	u8g2.drawGlyph(3, 10, 0x0081);
 
 	auto labelLength = utf8Length(label);
 	int progress_width = 0;
@@ -245,21 +254,21 @@ void displayProgress(float progress, String label)
 	// Calculate the render offset, which keeps the currently printing location
 	// visible if the label doesn't fit all on screen.
 	int render_offset = 0;
-	if (total_width > Lcd_X)
+	if (total_width > LCD_X)
 	{
 		// If the "progress" location is off screen, offset the rendered label
 		// so the progress indicator is centered.
-		if (progress_width > Lcd_X / 2)
+		if (progress_width > LCD_X / 2)
 		{
-			render_offset = progress_width - Lcd_X / 2;
+			render_offset = progress_width - LCD_X / 2;
 		}
 
 		// If centering the progress location woudl cause the right side of the
 		// label to render before the right edge of the screen then realign so
 		// it does, simulating a scrolling box's bounds.
-		if (total_width - render_offset < Lcd_X)
+		if (total_width - render_offset < LCD_X)
 		{
-			render_offset = total_width - Lcd_X;
+			render_offset = total_width - LCD_X;
 		}
 	}
 
@@ -267,7 +276,7 @@ void displayProgress(float progress, String label)
 	// simplicity's sake always draw the entire label (even if its of screen)
 	// and just let the screen buffer clip the edges.
 	int x_position = 0;
-	const int y_position = 36;
+	const int y_position = 26;
 	for (int i = 0; i < labelLength; i++)
 	{
 		auto character = utf8CharAt(label, i);
@@ -300,43 +309,36 @@ void displayProgress(float progress, String label)
 	{
 		// Render an inverted-color rectangle over the completed characters.
 		u8g2.setDrawColor(2);
-		u8g2.drawBox(0 - render_offset, 21, progress_width - 1, 21);
+		u8g2.drawBox(0 - render_offset, 11, progress_width - 1, 21);
 	}
 
 	// Draw a box around the text, which looks like the edges of a label.
 	u8g2.setDrawColor(1);
-	u8g2.drawFrame(0 - render_offset, 21, total_width, 22);
+	u8g2.drawFrame(0 - render_offset, 11, total_width, 22);
 
 	// If needed, draw ellipses on the right side of the screen to indicate the
 	// label continues.
-	if (total_width - render_offset > Lcd_X)
+	if (total_width - render_offset > LCD_X)
 	{
 		u8g2.setDrawColor(0);
 
 		// Clear 14 pixels of space on the right side of the screen.
-		u8g2.drawBox(Lcd_X - 14, 21, 14, 22);
+		u8g2.drawBox(LCD_X - 14, 11, 14, 22);
 
 		// Draw a triplet of 2x2 pixel dots, "...", in the middle of the
 		// text line.
 		u8g2.setDrawColor(1);
 		for (int i = 1; i <= 3; i++)
 		{
-			u8g2.drawBox(Lcd_X - (i * 4) + 2, 31, 2, 2);
+			u8g2.drawBox(LCD_X - (i * 4) + 2, 21, 2, 2);
 		}
 	}
 
-	// Update the progress reported to the web app.
-	webProgress = 100 * progress / labelLength;
-	if (webProgress > 0)
-	{
-		webProgress -= 1; // avoid 100% progress while still finishing
-	}
-
 	// Print "XX%" at the bottom of the screen.
-	String progressString = String(webProgress, 0);
+	String progressString = String(getwebProgress(), 0);
 	progressString.concat("%");
 	u8g2.setDrawColor(1);
-	u8g2.drawStr(6, 60, progressString.c_str());
+	u8g2.drawStr(110, 10, progressString.c_str());
 
 	u8g2.sendBuffer();
 }
@@ -347,13 +349,13 @@ void displayFinished()
 
 	displayClear(1);
 	u8g2.setDrawColor(0);
-	u8g2.setFont(u8g2_font_nine_by_five_nbp_t_all);
-	webProgress = 100;
-	u8g2.drawStr(42, 37, "FINISHED!");
+	u8g2.setFont(u8g2_font_squeezed_r7_tr);
+
+	u8g2.drawStr(50, MIDDLE_ROW, "FINISHED!");
 
 	u8g2.setFont(u8g2_font_open_iconic_all_1x_t);
-	u8g2.drawGlyph(27, 37, 0x0073);
-	u8g2.drawGlyph(90, 37, 0x0073);
+	u8g2.drawGlyph(27, MIDDLE_ROW, 0x0073);
+	u8g2.drawGlyph(90, MIDDLE_ROW, 0x0073);
 
 	u8g2.sendBuffer();
 }
@@ -364,12 +366,12 @@ void displayCut()
 
 	displayClear(0);
 	u8g2.setDrawColor(1);
-	u8g2.setFont(u8g2_font_nine_by_five_nbp_t_all);
-	u8g2.drawStr(44, 37, "CUTTING");
+	u8g2.setFont(u8g2_font_squeezed_r7_tr);
+	u8g2.drawStr(44, MIDDLE_ROW, "CUTTING");
 
 	u8g2.setFont(u8g2_font_open_iconic_all_1x_t);
-	u8g2.drawGlyph(26, 37, 0x00f2);
-	u8g2.drawGlyph(90, 37, 0x00f2);
+	u8g2.drawGlyph(26, MIDDLE_ROW, 0x00f2);
+	u8g2.drawGlyph(90, MIDDLE_ROW, 0x00f2);
 
 	u8g2.sendBuffer();
 }
@@ -380,12 +382,12 @@ void displayFeed()
 
 	displayClear(0);
 	u8g2.setDrawColor(1);
-	u8g2.setFont(u8g2_font_nine_by_five_nbp_t_all);
-	u8g2.drawStr(44, 37, "FEEDING");
+	u8g2.setFont(u8g2_font_squeezed_r7_tr);
+	u8g2.drawStr(44, MIDDLE_ROW, "FEEDING");
 
 	u8g2.setFont(u8g2_font_open_iconic_all_1x_t);
-	u8g2.drawGlyph(26, 37, 0x006e);
-	u8g2.drawGlyph(90, 37, 0x006e);
+	u8g2.drawGlyph(26, MIDDLE_ROW, 0x006e);
+	u8g2.drawGlyph(90, MIDDLE_ROW, 0x006e);
 
 	u8g2.sendBuffer();
 }
@@ -396,12 +398,12 @@ void displayReel()
 
 	displayClear(0);
 	u8g2.setDrawColor(1);
-	u8g2.setFont(u8g2_font_nine_by_five_nbp_t_all);
-	u8g2.drawStr(44, 37, "REELING");
+	u8g2.setFont(u8g2_font_squeezed_r7_tr);
+	u8g2.drawStr(44, MIDDLE_ROW, "REELING");
 
 	u8g2.setFont(u8g2_font_open_iconic_all_1x_t);
-	u8g2.drawGlyph(26, 37, 0x00d5);
-	u8g2.drawGlyph(90, 37, 0x00d5);
+	u8g2.drawGlyph(26, MIDDLE_ROW, 0x00d5);
+	u8g2.drawGlyph(90, MIDDLE_ROW, 0x00d5);
 
 	u8g2.sendBuffer();
 }
@@ -412,12 +414,12 @@ void displayTest(int a, int f)
 
 	displayClear(0);
 	u8g2.setDrawColor(1);
-	u8g2.setFont(u8g2_font_nine_by_five_nbp_t_all);
-	u8g2.drawStr(44, 37, "TESTING");
+	u8g2.setFont(u8g2_font_squeezed_r7_tr);
+	u8g2.drawStr(44, MIDDLE_ROW, "TESTING");
 
 	u8g2.setFont(u8g2_font_open_iconic_all_1x_t);
-	u8g2.drawGlyph(26, 37, 0x0073);
-	u8g2.drawGlyph(90, 37, 0x0073);
+	u8g2.drawGlyph(26, MIDDLE_ROW, 0x0073);
+	u8g2.drawGlyph(90, MIDDLE_ROW, 0x0073);
 
 	u8g2.sendBuffer();
 }
@@ -428,7 +430,7 @@ void displaySettings(int a, int f)
 
 	displayClear(0);
 	u8g2.setDrawColor(1);
-	u8g2.setFont(u8g2_font_nine_by_five_nbp_t_all);
+	u8g2.setFont(u8g2_font_squeezed_r7_tr);
 	u8g2.drawStr(47, 17, "SAVED!");
 
 	String alignString = "ALIGN: ";
@@ -455,8 +457,8 @@ void displayReboot()
 
 	displayClear(0);
 
-	u8g2.setFont(u8g2_font_nine_by_five_nbp_t_all);
-	u8g2.drawStr(38, 37, "REBOOTING...");
+	u8g2.setFont(u8g2_font_squeezed_r7_tr);
+	u8g2.drawStr(38, MIDDLE_ROW, "REBOOTING...");
 
 	u8g2.sendBuffer();
 	delay(2000);
@@ -499,3 +501,5 @@ void debugDisplay()
 	// displayReboot();
 	// delay(2000);
 }
+
+#endif // DISPLAY32

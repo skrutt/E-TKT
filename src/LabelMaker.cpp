@@ -38,17 +38,14 @@
 #include <ESPAsyncWebServer.h>
 #include <ESPAsyncWiFiManager.h>
 #include "SPIFFS.h"
-#include <U8g2lib.h>
 #include <ESP32Tone.h>
 #include <Preferences.h>
-#include <map>
-#include <tuple>
 #include "ArduinoJson.h"
 #include "AsyncJson.h"
 
-// extension files
-#include "etktLogo.h" // etkt logo in binary format
-#include "pitches.h"	// list of notes and their frequencies
+#include "Labelmaker.h"
+
+
 
 // oled display
 #include "display.h"
@@ -110,6 +107,14 @@ int peakAngle;
 // buzzer
 #define buzzerPin 26
 
+// E-TKT musical signature
+const int etktNotes[8] = {
+	44, 44, 16, 2, 31, 22, 31, 44};
+
+// selected musical scale for playing tunes
+const int charNoteSet[charQuantity + 1] = {
+	G4, G6, A4, D4, E4, F4, G5, A5, B5, C5, D5, 0, E5, F5, C6, D6, E6, F6, A6, B6, C4, C7, D7, E7, F7, G7, B4, A7, B7, C8, D8, C3, D3, E3, F3, G3, A3, B3, E2, F2, G2, A2, B2, 0};
+
 // DEBUG --------------------------------------------------------------------------
 // comment lines individually to isolate functions
 
@@ -124,8 +129,26 @@ int peakAngle;
 
 // DATA ---------------------------------------------------------------------------
 
-// char
-#define charQuantity 43 // the amount of teeth/characters in the carousel
+//Progress of printing
+float webProgress = 0;
+String displaySSID = "";
+String displayIP = "";
+
+//Getters
+float getwebProgress()
+{
+	return webProgress;
+}
+
+String getSSID()
+{
+	return displaySSID;
+}
+String getIP()
+{
+	return displayIP;
+}
+
 
 // A map from each supported character to its index in the carousel.
 // Characters are stored as a string instead of a native char type to support
@@ -135,14 +158,7 @@ int peakAngle;
 const std::map<String, int> charSet = {
 	{"$", 0}, {"-", 1}, {".", 2}, {"0", 26}, {"1", 20}, {"2", 3}, {"3", 4}, {"4", 5}, {"5", 6}, {"6", 7}, {"7", 8}, {"8", 9}, {"9", 10}, {"*", 11}, {"A", 12}, {"B", 13}, {"C", 14}, {"D", 15}, {"E", 16}, {"F", 17}, {"G", 18}, {"H", 19}, {"I", 20}, {"J", 21}, {"K", 22}, {"L", 23}, {"M", 24}, {"N", 25}, {"O", 26}, {"P", 27}, {"Q", 28}, {"R", 29}, {"S", 30}, {"T", 31}, {"U", 32}, {"V", 33}, {"W", 34}, {"X", 35}, {"Y", 36}, {"Z", 37}, {"♡", 38}, {"☆", 39}, {"♪", 40}, {"€", 41}, {"@", 42}};
 
-// For each non-ascii "glyph" character, maps it to a tuple of (font, symbol code,
-// width, x offset, y offset).  These values are used to align the redered glyph
-// with the rest of the label text which is from a font with different spacing.
-const std::map<String, std::tuple<const uint8_t *, int, int, int, int>> glyphs = {
-	{"♡", std::make_tuple(u8g2_font_6x12_t_symbols, 0x2664, 5, -1, -1)},
-	{"☆", std::make_tuple(u8g2_font_6x12_t_symbols, 0x2605, 5, -1, -1)},
-	{"♪", std::make_tuple(u8g2_font_siji_t_6x10, 0xE271, 5, -3, 0)},
-	{"€", std::make_tuple(u8g2_font_6x12_t_symbols, 0x20AC, 6, -1, -1)}};
+
 
 String labelString;
 String prevChar = "J";
@@ -165,13 +181,7 @@ int newAlign = defaultAlign;
 int newForce = defaultForce;
 String combinedSettings = "x";
 
-// E-TKT musical signature
-int etktNotes[8] = {
-	44, 44, 16, 2, 31, 22, 31, 44};
 
-// selected musical scale for playing tunes
-int charNoteSet[charQuantity + 1] = {
-	G4, G6, A4, D4, E4, F4, G5, A5, B5, C5, D5, 0, E5, F5, C6, D6, E6, F6, A6, B6, C4, C7, D7, E7, F7, G7, B4, A7, B7, C8, D8, C3, D3, E3, F3, G3, A3, B3, E2, F2, G2, A2, B2, 0};
 
 // --------------------------------------------------------------------------------
 // ASSEMBLY -----------------------------------------------------------------------
@@ -179,11 +189,11 @@ int charNoteSet[charQuantity + 1] = {
 
 // depending on the hall sensor positioning, the variable below makes sure the initial calibration is within tolerance
 // use a value between -1.0 and 1.0 to make it roughly align during assembly
-float assemblyCalibrationAlign = 0.5;
+const float assemblyCalibrationAlign = 0.5;
 
 // depending on servo characteristics and P_press assembling process, the pressing angle might not be so precise and the value below compensates it
 // use a value between 0 and 20 to make sure the press is barely touching the daisy wheel on test align
-int assemblyCalibrationForce = 15;
+const int assemblyCalibrationForce = 15;
 
 // after that, proceed to fine tune on the E-TKT's app when the machine is fully assembled
 
@@ -194,14 +204,6 @@ int assemblyCalibrationForce = 15;
 AsyncWebServer server(80);
 DNSServer dns;
 
-float webProgress = 0;
-
-// qr code for accessing the webapp
-const int QRcode_Version = 3; //  set the version (range 1->40)
-const int QRcode_ECC = 2;	  //  set the Error Correction level (range 0-3) or symbolic (ECC_LOW, ECC_MEDIUM, ECC_QUARTILE and ECC_HIGH)
-QRCode qrcode;				  //  create the QR code
-String displaySSID = "";
-String displayIP = "";
 
 
 // --------------------------------------------------------------------------------
@@ -473,6 +475,16 @@ void cutLabel()
 	}
 }
 
+void setWebProgress(float progress, int labelLength)
+{
+		// Update the progress reported to the web app.
+	webProgress = 100 * progress / labelLength;
+	if (webProgress > 0)
+	{
+		webProgress -= 1; // avoid 100% progress while still finishing
+	}
+}
+
 void writeLabel(String label)
 {
 	// manages entirely a particular label printing process, from start to end (task kill)
@@ -493,6 +505,8 @@ void writeLabel(String label)
 	lightChar(0.2f);
 
 	displayInitialize();
+	
+	setWebProgress(0, labelLength);
 	displayProgress(0, label);
 
 #ifdef do_sound
@@ -547,7 +561,7 @@ void writeLabel(String label)
 		delay(500);
 #endif
 		delay(500);
-
+		setWebProgress(i + 1, labelLength);
 		displayProgress(i + 1, label);
 	}
 
@@ -579,6 +593,7 @@ void writeLabel(String label)
 
 	stepperChar.disableOutputs();
 
+	webProgress = 100;
 	displayFinished();
 	lightFinished();
 	busy = false;
@@ -1097,7 +1112,7 @@ void setup()
 
 	// set pins
 	pinMode(sensorPin, INPUT_PULLUP);
-	pinMode(wifiResetPin, INPUT);
+	pinMode(wifiResetPin, INPUT_PULLUP);
 	pinMode(ledChar, OUTPUT);
 	pinMode(ledFinish, OUTPUT);
 	pinMode(enableCharStepper, OUTPUT);

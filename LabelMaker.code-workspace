@@ -18,7 +18,9 @@
 			"utility": "cpp",
 			"random": "cpp",
 			"string": "cpp",
-			"memory": "cpp"
+			"memory": "cpp",
+			"bitset": "cpp",
+			"algorithm": "cpp"
 		}
 	}
 }
