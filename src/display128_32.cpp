@@ -277,6 +277,7 @@ void displayProgress(float progress, String label)
 	// and just let the screen buffer clip the edges.
 	int x_position = 0;
 	const int y_position = 26;
+    
 	for (int i = 0; i < labelLength; i++)
 	{
 		auto character = utf8CharAt(label, i);
@@ -305,16 +306,19 @@ void displayProgress(float progress, String label)
 		x_position += width;
 	}
 
+    const int labelY = 13;
+    const int labelHeight = 17;
+
 	if (progress_width > 0)
 	{
 		// Render an inverted-color rectangle over the completed characters.
 		u8g2.setDrawColor(2);
-		u8g2.drawBox(0 - render_offset, 11, progress_width - 1, 21);
+		u8g2.drawBox(0 - render_offset, labelY, progress_width - 1, labelHeight);
 	}
 
 	// Draw a box around the text, which looks like the edges of a label.
 	u8g2.setDrawColor(1);
-	u8g2.drawFrame(0 - render_offset, 11, total_width, 22);
+	u8g2.drawFrame(0 - render_offset, labelY, total_width, labelHeight);
 
 	// If needed, draw ellipses on the right side of the screen to indicate the
 	// label continues.
@@ -323,14 +327,14 @@ void displayProgress(float progress, String label)
 		u8g2.setDrawColor(0);
 
 		// Clear 14 pixels of space on the right side of the screen.
-		u8g2.drawBox(LCD_X - 14, 11, 14, 22);
+		u8g2.drawBox(LCD_X - 14, labelY, 14, labelHeight);
 
 		// Draw a triplet of 2x2 pixel dots, "...", in the middle of the
 		// text line.
 		u8g2.setDrawColor(1);
 		for (int i = 1; i <= 3; i++)
 		{
-			u8g2.drawBox(LCD_X - (i * 4) + 2, 21, 2, 2);
+			u8g2.drawBox(LCD_X - (i * 4) + 2, 20, 2, 2);
 		}
 	}
 
@@ -367,7 +371,7 @@ void displayCut()
 	displayClear(0);
 	u8g2.setDrawColor(1);
 	u8g2.setFont(u8g2_font_squeezed_r7_tr);
-	u8g2.drawStr(44, MIDDLE_ROW, "CUTTING");
+	u8g2.drawStr(54, MIDDLE_ROW, "CUTTING");
 
 	u8g2.setFont(u8g2_font_open_iconic_all_1x_t);
 	u8g2.drawGlyph(26, MIDDLE_ROW, 0x00f2);
@@ -383,7 +387,7 @@ void displayFeed()
 	displayClear(0);
 	u8g2.setDrawColor(1);
 	u8g2.setFont(u8g2_font_squeezed_r7_tr);
-	u8g2.drawStr(44, MIDDLE_ROW, "FEEDING");
+	u8g2.drawStr(54, MIDDLE_ROW, "FEEDING");
 
 	u8g2.setFont(u8g2_font_open_iconic_all_1x_t);
 	u8g2.drawGlyph(26, MIDDLE_ROW, 0x006e);
@@ -399,7 +403,7 @@ void displayReel()
 	displayClear(0);
 	u8g2.setDrawColor(1);
 	u8g2.setFont(u8g2_font_squeezed_r7_tr);
-	u8g2.drawStr(44, MIDDLE_ROW, "REELING");
+	u8g2.drawStr(54, MIDDLE_ROW, "REELING");
 
 	u8g2.setFont(u8g2_font_open_iconic_all_1x_t);
 	u8g2.drawGlyph(26, MIDDLE_ROW, 0x00d5);
@@ -415,7 +419,7 @@ void displayTest(int a, int f)
 	displayClear(0);
 	u8g2.setDrawColor(1);
 	u8g2.setFont(u8g2_font_squeezed_r7_tr);
-	u8g2.drawStr(44, MIDDLE_ROW, "TESTING");
+	u8g2.drawStr(54, MIDDLE_ROW, "TESTING");
 
 	u8g2.setFont(u8g2_font_open_iconic_all_1x_t);
 	u8g2.drawGlyph(26, MIDDLE_ROW, 0x0073);
@@ -431,21 +435,21 @@ void displaySettings(int a, int f)
 	displayClear(0);
 	u8g2.setDrawColor(1);
 	u8g2.setFont(u8g2_font_squeezed_r7_tr);
-	u8g2.drawStr(47, 17, "SAVED!");
+	u8g2.drawStr(47, 10, "SAVED!");
 
 	String alignString = "ALIGN: ";
 	alignString.concat(a);
 	const char *alignChar = alignString.c_str();
-	u8g2.drawStr(44, 37, alignChar);
+	u8g2.drawStr(44, MIDDLE_ROW, alignChar);
 
 	String forceString = "FORCE: ";
 	forceString.concat(f);
 	const char *forceChar = forceString.c_str();
-	u8g2.drawStr(42, 57, forceChar);
+	u8g2.drawStr(42, 30, forceChar);
 
 	u8g2.setFont(u8g2_font_open_iconic_all_1x_t);
-	u8g2.drawGlyph(33, 16, 0x0073);
-	u8g2.drawGlyph(83, 16, 0x0073);
+	u8g2.drawGlyph(33, 10, 0x0073);
+	u8g2.drawGlyph(83, 10, 0x0073);
 
 	u8g2.sendBuffer();
 	delay(3000);

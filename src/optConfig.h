@@ -15,3 +15,6 @@
 // For instance, invert if using a "3144" hall sensor but don't invert if using a "44E 402" hall sensor.
 
 // #define INVERT_HALL_SENSOR_LOGIC true
+
+//if using a microswitch instead
+#define NO_HALL_SENSOR 1
