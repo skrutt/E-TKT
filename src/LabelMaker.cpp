@@ -88,9 +88,13 @@ AccelStepper stepperFeed(MICROSTEP_Feed, 15, 2, 16, 4);
 
 #define enableCharStepper 25
 #define MICROSTEP_Char 16 // for more precision, maximum available microsteps for the character stepper
-const int stepsPerRevolutionChar = 200 * MICROSTEP_Char;
 float stepsPerChar;
 AccelStepper stepperChar(1, 32, 33);
+#ifndef REVERSE_CHAR_STEPPER_DIRECTION
+const int stepsPerRevolutionChar = -200 * MICROSTEP_Char;
+#else
+const int stepsPerRevolutionChar = 200 * MICROSTEP_Char;
+#endif
 
 // servo
 Servo myServo;
@@ -189,7 +193,8 @@ String combinedSettings = "x";
 
 // depending on the hall sensor positioning, the variable below makes sure the initial calibration is within tolerance
 // use a value between -1.0 and 1.0 to make it roughly align during assembly
-const float assemblyCalibrationAlign = 9.4;
+//positive values are clockwise
+const float assemblyCalibrationAlign = 8.5;
 
 // depending on servo characteristics and P_press assembling process, the pressing angle might not be so precise and the value below compensates it
 // use a value between 0 and 20 to make sure the press is barely touching the daisy wheel on test align
@@ -309,11 +314,11 @@ bool doHomeMove()
 
 	// Move the carousel until the hall sensor triggers, and then treat wherever
 	// that is as the new home position.
-	stepperChar.move(-stepsPerRevolutionChar * 1.5f);
+	stepperChar.move(stepsPerRevolutionChar * 1.5f);
 	
 	// int sensorState = analogRead(sensorPin);
 	// while ((sensorState > threshold) ^ HOMING_INVERSION)
-	while (triggerState = digitalRead(sensorPin) ^ HOMING_INVERSION)
+	while ((triggerState = (digitalRead(sensorPin) ^ HOMING_INVERSION)))
 	{
 		stepperChar.run();
 		//feedLoopWDT();
@@ -345,8 +350,8 @@ void setHome(int align = alignFactor)
 	doHomeMove();
 
 	//fine homing
-	//move off again
-	stepperChar.runToNewPosition(-stepsPerChar * 2);
+	//move off again, 90% of a revolution
+	stepperChar.runToNewPosition(stepsPerChar * 40);
 
 	//Set slow speed
 	stepperChar.setMaxSpeed(CHARACTER_STEPPER_FINE_HOMING_SPEED);
@@ -360,7 +365,8 @@ void setHome(int align = alignFactor)
 	// the sensor, inidcating that something is wrong with the hardware.
 
 	// Align to refence point for homing
-	stepperChar.runToNewPosition(-stepsPerChar + (stepsPerChar * a) + (assemblyCalibrationAlign * stepsPerChar));
+	//Always move forward so: 1 full rotation - offset
+	stepperChar.runToNewPosition(stepsPerChar + stepsPerRevolutionChar - ((stepsPerChar * a) + (assemblyCalibrationAlign * stepsPerChar)));
 	stepperChar.run();
 	stepperChar.setCurrentPosition(0);
 	currentCharPosition = charHome;
@@ -471,7 +477,7 @@ void goToCharacter(String c, int override = alignFactor)
 	}
 
 	// runs char stepper clockwise to reach the target position
-	stepperChar.runToNewPosition(-stepsPerChar * deltaPosition);
+	stepperChar.runToNewPosition(stepsPerChar * deltaPosition);
 
 	delay(25);
 }
@@ -1138,11 +1144,9 @@ void setup()
 	digitalWrite(enableCharStepper, HIGH);
 	stepperChar.setMaxSpeed(CHARACTER_STEPPER_MAX_SPEED);
 	stepperChar.setAcceleration(CHARACTER_STEPPER_MAX_ACCELERATION);
-#ifndef REVERSE_CHAR_STEPPER_DIRECTION
+
 	stepsPerChar = (float)stepsPerRevolutionChar / charQuantity;
-#else
-	stepsPerChar = -(float)stepsPerRevolutionChar / charQuantity;
-#endif
+
 	stepperChar.setPinsInverted(true, false, true);
 	stepperChar.setEnablePin(enableCharStepper);
 	// currentCharPosition = charHome;							//REMOVE ME, for manual homing
