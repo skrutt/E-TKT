@@ -122,8 +122,8 @@ const int charNoteSet[charQuantity + 1] = {
 // DEBUG --------------------------------------------------------------------------
 // comment lines individually to isolate functions
 
-// #define do_cut
-// #define do_press
+#define do_cut
+#define do_press
 #define do_char
 #define do_feed
 #define do_sound
