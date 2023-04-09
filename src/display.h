@@ -12,9 +12,7 @@
 #include <tuple>
 #include <map>
 
-//Choose display 
-#define DISPLAY32
-//#define DISPLAY64
+
 
 // qr code for accessing the webapp
 const int QRcode_Version = 3; //  set the version (range 1->40)

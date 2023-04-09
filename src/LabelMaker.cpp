@@ -52,7 +52,6 @@
 
 // BASIC CONFIGURATION ------------------------------------------------------------
 
-#include "optConfig.h" // opt-in external file for configuring motor direction and hall sensor logic
 
 // Speed and acceleration of the stepper motor that rotates the character carousel, measured in steps/s and steps/s^2.
 // Use lower values if you find that the printer sometimes prints the wrong letter.  Any value above zero is ok but
@@ -61,6 +60,7 @@
 // how fast the ESP-32 can talk with it. 1600 steps is a full revolution of the carousel.
 #define CHARACTER_STEPPER_MAX_SPEED 320000
 #define CHARACTER_STEPPER_MAX_ACCELERATION 16000
+#define CHARACTER_STEPPER_FINE_HOMING_SPEED 320
 
 // Speed and acceleration of the stepper motor that feeds the label tape, measured in steps/s and steps/s^2.
 // Use lower values if you find that the printer doesn't consistently feed the correct length of tape between letters.
@@ -71,12 +71,9 @@
 
 // HARDWARE -----------------------------------------------------------------------
 
-#define MICROSTEP_Feed 8
-#define MICROSTEP_Char 16 // for more precision, maximum available microsteps for the character stepper
 
 // home sensor
 #define sensorPin 34 // hall sensor
-int sensorState;
 #define threshold 128 // between 0 and 1023
 int currentCharPosition = -1;
 int deltaPosition;
@@ -85,12 +82,15 @@ int deltaPosition;
 #define wifiResetPin 13 // tact switch
 
 // steppers
+#define MICROSTEP_Feed 8
 #define stepsPerRevolutionFeed 4076
-const int stepsPerRevolutionChar = 200 * MICROSTEP_Char;
 AccelStepper stepperFeed(MICROSTEP_Feed, 15, 2, 16, 4);
-AccelStepper stepperChar(1, 32, 33);
+
 #define enableCharStepper 25
+#define MICROSTEP_Char 16 // for more precision, maximum available microsteps for the character stepper
+const int stepsPerRevolutionChar = 200 * MICROSTEP_Char;
 float stepsPerChar;
+AccelStepper stepperChar(1, 32, 33);
 
 // servo
 Servo myServo;
@@ -118,8 +118,8 @@ const int charNoteSet[charQuantity + 1] = {
 // DEBUG --------------------------------------------------------------------------
 // comment lines individually to isolate functions
 
-#define do_cut
-#define do_press
+// #define do_cut
+// #define do_press
 #define do_char
 #define do_feed
 #define do_sound
@@ -189,11 +189,12 @@ String combinedSettings = "x";
 
 // depending on the hall sensor positioning, the variable below makes sure the initial calibration is within tolerance
 // use a value between -1.0 and 1.0 to make it roughly align during assembly
-const float assemblyCalibrationAlign = 0.5;
+const float assemblyCalibrationAlign = 9.4;
 
 // depending on servo characteristics and P_press assembling process, the pressing angle might not be so precise and the value below compensates it
 // use a value between 0 and 20 to make sure the press is barely touching the daisy wheel on test align
-const int assemblyCalibrationForce = 15;
+//higher is a harder press
+const int assemblyCalibrationForce = 1;
 
 // after that, proceed to fine tune on the E-TKT's app when the machine is fully assembled
 
@@ -295,6 +296,37 @@ void eggMusic(String notes, String durations)
 // --------------------------------------------------------------------------------
 // MECHANICS ----------------------------------------------------------------------
 
+//Move inversion here to get cleaner code w less repetition
+#ifdef INVERT_HALL_SENSOR_LOGIC
+	const bool HOMING_INVERSION = INVERT_HALL_SENSOR_LOGIC;
+#else
+	const bool HOMING_INVERSION = 0;
+#endif
+
+bool doHomeMove()
+{
+	int triggerState = 0;
+
+	// Move the carousel until the hall sensor triggers, and then treat wherever
+	// that is as the new home position.
+	stepperChar.move(-stepsPerRevolutionChar * 1.5f);
+	
+	// int sensorState = analogRead(sensorPin);
+	// while ((sensorState > threshold) ^ HOMING_INVERSION)
+	while (triggerState = digitalRead(sensorPin) ^ HOMING_INVERSION)
+	{
+		stepperChar.run();
+		//feedLoopWDT();
+		delayMicroseconds(100); // TODO: less intrusive way to avoid triggering watchdog?
+		// sensorState = analogRead(sensorPin);
+	}
+
+	stepperChar.setCurrentPosition(0);
+
+	// Return trigger result, indicating success or not (0 for success)
+	return triggerState;
+}
+
 void setHome(int align = alignFactor)
 {
 	// runs the char stepper clockwise until triggering the hall sensor, then call it home at char 21
@@ -309,44 +341,25 @@ void setHome(int align = alignFactor)
 	Serial.println(a);
 #endif
 
-	sensorState = analogRead(sensorPin);
+	//first home move. Will be skiped if already on trigger
+	doHomeMove();
 
-	// Check to see if the hall sensor on the stepper is already trigerred
-	// and if so, move it a little bit to get the sensor into an un-trigerred
-	// position.
+	//fine homing
+	//move off again
+	stepperChar.runToNewPosition(-stepsPerChar * 2);
 
-#ifdef INVERT_HALL_SENSOR_LOGIC
-	if ((sensorState < threshold) ^ INVERT_HALL_SENSOR_LOGIC)
-#else
-	if ((sensorState < threshold))
-#endif
-	{
-		stepperChar.runToNewPosition(-stepsPerChar * 4);
-		stepperChar.run();
-	}
-	sensorState = analogRead(sensorPin);
-	// TODO: Change the above to only move as long as the hall sensor is
-	// triggerred, which could save a little time while printing.
+	//Set slow speed
+	stepperChar.setMaxSpeed(CHARACTER_STEPPER_FINE_HOMING_SPEED);
 
-	// Move the carousel until the hall sensor triggers, and then treat wherever
-	// that is as the new home position.
-	stepperChar.move(-stepsPerRevolutionChar * 1.5f);
+	doHomeMove();
 
-// #ifdef INVERT_HALL_SENSOR_LOGIC
-// 	while ((sensorState > threshold) ^ INVERT_HALL_SENSOR_LOGIC)
-// #else
-// 	while (sensorState > threshold)
-// #endif
-// 	{
-// 		sensorState = analogRead(sensorPin);
-// 		stepperChar.run();
-// 		delayMicroseconds(100); // TODO: less intrusive way to avoid triggering watchdog?
-// 	}
+	//reset to full speed
+	stepperChar.setMaxSpeed(CHARACTER_STEPPER_MAX_SPEED);
+
 	// TODO: Add a failure path for if the stepper moved a full rotation without trigerring
 	// the sensor, inidcating that something is wrong with the hardware.
-	stepperChar.setCurrentPosition(0);
-	sensorState = analogRead(sensorPin);
 
+	// Align to refence point for homing
 	stepperChar.runToNewPosition(-stepsPerChar + (stepsPerChar * a) + (assemblyCalibrationAlign * stepsPerChar));
 	stepperChar.run();
 	stepperChar.setCurrentPosition(0);
@@ -369,17 +382,17 @@ void feedLabel(int repeat = 1)
 	stepperFeed.enableOutputs();
 	delay(10);
 
-	for (int i = 0; i < repeat; i++)
-	{
+	// for (int i = 0; i < repeat; i++)
+	// {
 
 #ifdef REVERSE_FEED_STEPPER_DIRECTION
 		const int direction = 1;
 #else
 		const int direction = -1;
 #endif
-		stepperFeed.runToNewPosition(stepperFeed.currentPosition() + (stepsPerRevolutionFeed / 8) * direction);
+		stepperFeed.runToNewPosition(stepperFeed.currentPosition() + (stepsPerRevolutionFeed / 8) * direction * repeat);
 		delay(10);
-	}
+	// }
 
 	stepperFeed.disableOutputs();
 
@@ -1125,9 +1138,14 @@ void setup()
 	digitalWrite(enableCharStepper, HIGH);
 	stepperChar.setMaxSpeed(CHARACTER_STEPPER_MAX_SPEED);
 	stepperChar.setAcceleration(CHARACTER_STEPPER_MAX_ACCELERATION);
+#ifndef REVERSE_CHAR_STEPPER_DIRECTION
 	stepsPerChar = (float)stepsPerRevolutionChar / charQuantity;
+#else
+	stepsPerChar = -(float)stepsPerRevolutionChar / charQuantity;
+#endif
 	stepperChar.setPinsInverted(true, false, true);
 	stepperChar.setEnablePin(enableCharStepper);
+	// currentCharPosition = charHome;							//REMOVE ME, for manual homing
 	setHome(); // initial home for reference
 	stepperChar.disableOutputs();
 
