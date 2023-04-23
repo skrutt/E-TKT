@@ -162,7 +162,8 @@ String getIP()
 const std::map<String, int> charSet = {
 	{"$", 0}, {"-", 1}, {".", 2}, {"0", 26}, {"1", 20}, {"2", 3}, {"3", 4}, {"4", 5}, {"5", 6}, {"6", 7}, {"7", 8}, {"8", 9}, {"9", 10}, {"*", 11}, {"A", 12}, {"B", 13}, {"C", 14}, {"D", 15}, {"E", 16}, {"F", 17}, {"G", 18}, {"H", 19}, {"I", 20}, {"J", 21}, {"K", 22}, {"L", 23}, {"M", 24}, {"N", 25}, {"O", 26}, {"P", 27}, {"Q", 28}, {"R", 29}, {"S", 30}, {"T", 31}, {"U", 32}, {"V", 33}, {"W", 34}, {"X", 35}, {"Y", 36}, {"Z", 37}, {"♡", 38}, {"☆", 39}, {"♪", 40}, {"€", 41}, {"@", 42}};
 
-
+// NORDIC WHEEL
+// A B C D E F G H I J K L M N O P Q R S T U V W X Y Z // Ä Ö Ü Å Ø Æ - . 2 3 4 5 6 7 8 9 CUT 
 
 String labelString;
 String prevChar = "J";
@@ -194,12 +195,12 @@ String combinedSettings = "x";
 // depending on the hall sensor positioning, the variable below makes sure the initial calibration is within tolerance
 // use a value between -1.0 and 1.0 to make it roughly align during assembly
 //positive values are clockwise
-const float assemblyCalibrationAlign = 8.5;
+const float assemblyCalibrationAlign = 8.2;
 
 // depending on servo characteristics and P_press assembling process, the pressing angle might not be so precise and the value below compensates it
 // use a value between 0 and 20 to make sure the press is barely touching the daisy wheel on test align
 //higher is a harder press
-const int assemblyCalibrationForce = 1;
+const int assemblyCalibrationForce = 5;
 
 // after that, proceed to fine tune on the E-TKT's app when the machine is fully assembled
 
@@ -767,12 +768,12 @@ void processor(void *parameters)
 			stepperChar.disableOutputs();
 			myServo.write(restAngle);
 
-			busy = false;
 			webProgress = 100;
 			analogWrite(ledFinish, 0);
 			lightChar(0.0f);
 			displayQRCode();
-			vTaskDelete(processorTaskHandle); // delete task
+			busy = false;
+			vTaskDelete(NULL); // delete task
 		}
 		else if (parameter == "reel")
 		{

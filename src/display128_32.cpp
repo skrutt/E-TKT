@@ -69,14 +69,14 @@ void displaySplash()
 			u8g2.drawXBM(i - j - 11, 0, LCD_X, LCD_Y, etktLogo);
 			u8g2.sendBuffer();
 		}
-// 		if (charNoteSet[etktNotes[n]] != 44)
-// 		{
-// #ifdef do_sound
-// 			sound(charNoteSet[etktNotes[n]], 200);
-// #else
-// 			delay(200);
-// #endif
-// 		}
+		if (charNoteSet[etktNotes[n]] != 44)
+		{
+#ifdef do_sound
+			sound(charNoteSet[etktNotes[n]], 200);
+#else
+			delay(200);
+#endif
+		}
 		n++;
 	}
 

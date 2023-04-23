@@ -18,6 +18,10 @@
 const int QRcode_Version = 3; //  set the version (range 1->40)
 const int QRcode_ECC = 2;	  //  set the Error Correction level (range 0-3) or symbolic (ECC_LOW, ECC_MEDIUM, ECC_QUARTILE and ECC_HIGH)
 
+//declares for music
+extern const int etktNotes[];
+extern const int charNoteSet[];
+
 
 // For each non-ascii "glyph" character, maps it to a tuple of (font, symbol code,
 // width, x offset, y offset).  These values are used to align the redered glyph
